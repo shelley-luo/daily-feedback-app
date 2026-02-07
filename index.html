@@ -38,11 +38,11 @@
         <input type="file" id="input-import" accept=".json" class="hidden" />
       </div>
       <div class="remote-load">
-        <input type="url" id="remote-url" placeholder="输入数据链接（只读查看）" />
+        <input type="url" id="remote-url" placeholder="输入数据链接，加载后可勾选完成项" />
         <button type="button" class="btn btn-secondary" id="btn-load-remote">加载</button>
         <button type="button" class="btn btn-outline hidden" id="btn-use-local">使用本地数据</button>
       </div>
-      <p id="remote-hint" class="remote-hint hidden">当前显示的是从链接加载的只读数据</p>
+      <p id="remote-hint" class="remote-hint hidden">当前显示的是从链接加载的数据，可勾选完成项（不可编辑/删除）</p>
       <div id="feedback-list" class="feedback-list"></div>
       <div id="empty-hint" class="empty-hint hidden">该条件下暂无反馈记录</div>
     </section>

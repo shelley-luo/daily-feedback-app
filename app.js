@@ -144,8 +144,39 @@
   const remoteHint = document.getElementById('remote-hint');
 
   let pendingImages = []; // 待提交的图片 base64
-  let remoteData = null; // 从链接加载的只读数据，为 null 时使用本地 DB
+  let remoteData = null; // 从链接加载的数据，为 null 时使用本地 DB
+  let remoteDataUrl = ''; // 当前加载的远程数据链接，用于保存组员打勾状态
   let editingId = null; // 正在编辑的反馈 id，为 null 表示新增
+
+  const REMOTE_DONES_KEY = 'daily-feedback-remote-dones';
+
+  function getRemoteDonesStore() {
+    try {
+      const raw = localStorage.getItem(REMOTE_DONES_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function getRemoteDones(url, item) {
+    if (!url) return undefined;
+    const key = `${item.date}_${item.member}_${(item.createdAt || '')}`;
+    const store = getRemoteDonesStore();
+    const byUrl = store[url];
+    return byUrl && byUrl[key] ? byUrl[key] : undefined;
+  }
+
+  function setRemoteDones(url, item, itemDones) {
+    if (!url) return;
+    const key = `${item.date}_${item.member}_${(item.createdAt || '')}`;
+    const store = getRemoteDonesStore();
+    if (!store[url]) store[url] = {};
+    store[url][key] = itemDones;
+    try {
+      localStorage.setItem(REMOTE_DONES_KEY, JSON.stringify(store));
+    } catch (e) {}
+  }
 
   // 默认日期为今天
   addDate.value = todayStr();
@@ -200,7 +231,7 @@
     const noteHtml = isNoteHtml(note);
     const parsed = parseNoteIntoItems(note);
     const itemDones = Array.isArray(item.itemDones) ? item.itemDones : [];
-    const canToggle = remoteData === null && item.id != null;
+    const canToggle = parsed.itemCount > 0;
 
     if (parsed.itemCount === 0) {
       if (noteHtml) return '<div class="feedback-card-note">' + note + '</div>';
@@ -217,9 +248,8 @@
         const checkClass = done ? 'note-item-check done' : 'note-item-check';
         const contentClass = done ? 'note-item-content note-item-done' : 'note-item-content';
         const label = done ? '取消完成' : '标记完成';
-        const readonlyClass = canToggle ? '' : ' readonly';
         html += '<div class="note-item-row">';
-        html += `<span class="${checkClass}${readonlyClass}" role="button" tabindex="0" data-item-id="${item.id}" data-item-idx="${idx}" data-done="${done}" title="${label}" aria-label="${label}">${done ? '✓' : '○'}</span>`;
+        html += `<span class="${checkClass}" role="button" tabindex="0" data-item-idx="${idx}" data-done="${done}" title="${label}" aria-label="${label}">${done ? '✓' : '○'}</span>`;
         html += `<span class="${contentClass}">${seg.contentRaw}</span>`;
         html += '</div>';
       } else {
@@ -256,6 +286,10 @@
     }
     emptyHint.classList.add('hidden');
     filtered.forEach((item) => {
+      const displayItem =
+        remoteData && remoteDataUrl
+          ? { ...item, itemDones: getRemoteDones(remoteDataUrl, item) ?? item.itemDones ?? [] }
+          : item;
       const card = document.createElement('div');
       card.className = 'feedback-card';
       card.setAttribute('data-id', item.id != null ? item.id : '');
@@ -282,26 +316,26 @@
           ${actionsHtml}
         </div>
         <div class="feedback-card-body">
-          ${item.note ? renderNoteContent(item) : ''}
+          ${item.note ? renderNoteContent(displayItem) : ''}
           ${imagesHtml}
         </div>
       `;
       card.querySelectorAll('.feedback-card-images img').forEach((img) => {
         img.addEventListener('click', () => openPreview(item));
       });
-      if (canEdit && item.id != null) {
-        card.querySelectorAll('.note-item-check').forEach((el) => {
-          el.addEventListener('click', (e) => {
+      card.querySelectorAll('.note-item-check').forEach((el) => {
+        el.addEventListener('click', (e) => {
+          e.preventDefault();
+          toggleItemDone(item, parseInt(el.getAttribute('data-item-idx'), 10));
+        });
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             toggleItemDone(item, parseInt(el.getAttribute('data-item-idx'), 10));
-          });
-          el.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              toggleItemDone(item, parseInt(el.getAttribute('data-item-idx'), 10));
-            }
-          });
+          }
         });
+      });
+      if (canEdit && item.id != null) {
         const editBtn = card.querySelector('.btn-edit');
         const deleteBtn = card.querySelector('.btn-delete');
         if (editBtn) editBtn.addEventListener('click', () => startEdit(item));
@@ -374,10 +408,20 @@
   }
 
   function toggleItemDone(item, idx) {
-    if (remoteData !== null || item.id == null) return;
-    const itemDones = (item.itemDones || []).slice();
+    const baseDones =
+      remoteData && remoteDataUrl
+        ? (getRemoteDones(remoteDataUrl, item) ?? item.itemDones ?? [])
+        : (item.itemDones || []).slice();
+    const itemDones = baseDones.slice();
     while (itemDones.length <= idx) itemDones.push(false);
     itemDones[idx] = !itemDones[idx];
+
+    if (remoteData !== null && remoteDataUrl) {
+      setRemoteDones(remoteDataUrl, item, itemDones);
+      applyFilter();
+      return;
+    }
+    if (item.id == null) return;
     const updated = {
       date: item.date,
       member: item.member,
@@ -617,9 +661,10 @@
       .then((obj) => {
         const list = Array.isArray(obj) ? obj : (obj.data || []);
         remoteData = list;
+        remoteDataUrl = url;
         setRemoteMode(true);
         renderFilteredItems(remoteData);
-        alert('已加载 ' + list.length + ' 条反馈（只读）');
+        alert('已加载 ' + list.length + ' 条反馈，可勾选完成项');
       })
       .catch(() => {
         alert('加载失败，请检查链接是否可访问（需支持 CORS）');
@@ -628,6 +673,7 @@
 
   btnUseLocal.addEventListener('click', () => {
     remoteData = null;
+    remoteDataUrl = '';
     setRemoteMode(false);
     getAllFeedback().then((items) => renderFilteredItems(items));
   });
