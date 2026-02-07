@@ -53,6 +53,7 @@
           member: (item.member || '').trim(),
           note: (item.note || '').trim(),
           images: item.images || [],
+          itemDones: item.itemDones || [],
           createdAt: new Date().toISOString(),
         };
         const req = store.add(record);
@@ -73,6 +74,7 @@
           member: (item.member || '').trim(),
           note: (item.note || '').trim(),
           images: item.images || [],
+          itemDones: item.itemDones || [],
           createdAt: item.createdAt || new Date().toISOString(),
         };
         const req = store.put(record);
@@ -180,12 +182,52 @@
     return typeof note === 'string' && note.includes('<');
   }
 
-  function renderNoteContent(note) {
+  // 将修改要点按「1. 2. 3.」拆成多条，用于前面显示圆圈和打勾
+  function parseNoteIntoItems(html) {
+    if (!html || typeof html !== 'string') return { segments: [], itemCount: 0 };
+    const segments = html.split(/(?=\d+[\.．]\s+)/);
+    const result = segments.map((content) => {
+      const isItem = /\d+[\.．]\s+/.test(content);
+      return { content: content.trim(), contentRaw: content, isItem };
+    }).filter((s) => s.content.length > 0);
+    const itemCount = result.filter((s) => s.isItem).length;
+    return { segments: result, itemCount };
+  }
+
+  function renderNoteContent(item) {
+    const note = item.note;
     if (!note) return '';
-    if (isNoteHtml(note)) {
-      return '<div class="feedback-card-note">' + note + '</div>';
+    const noteHtml = isNoteHtml(note);
+    const parsed = parseNoteIntoItems(note);
+    const itemDones = Array.isArray(item.itemDones) ? item.itemDones : [];
+    const canToggle = remoteData === null && item.id != null;
+
+    if (parsed.itemCount === 0) {
+      if (noteHtml) return '<div class="feedback-card-note">' + note + '</div>';
+      return '<div class="feedback-card-note note-is-text">' + escapeHtml(note) + '</div>';
     }
-    return '<div class="feedback-card-note note-is-text">' + escapeHtml(note) + '</div>';
+
+    let itemIndex = 0;
+    let html = '<div class="feedback-card-note feedback-card-note-items">';
+    parsed.segments.forEach((seg) => {
+      if (seg.isItem) {
+        const done = itemDones[itemIndex] === true;
+        const idx = itemIndex;
+        itemIndex++;
+        const checkClass = done ? 'note-item-check done' : 'note-item-check';
+        const contentClass = done ? 'note-item-content note-item-done' : 'note-item-content';
+        const label = done ? '取消完成' : '标记完成';
+        const readonlyClass = canToggle ? '' : ' readonly';
+        html += '<div class="note-item-row">';
+        html += `<span class="${checkClass}${readonlyClass}" role="button" tabindex="0" data-item-id="${item.id}" data-item-idx="${idx}" data-done="${done}" title="${label}" aria-label="${label}">${done ? '✓' : '○'}</span>`;
+        html += `<span class="${contentClass}">${seg.contentRaw}</span>`;
+        html += '</div>';
+      } else {
+        html += '<div class="note-item-intro">' + seg.contentRaw + '</div>';
+      }
+    });
+    html += '</div>';
+    return html;
   }
 
   // 筛选并渲染列表（items 可为本地 DB 或 remoteData）
@@ -240,7 +282,7 @@
           ${actionsHtml}
         </div>
         <div class="feedback-card-body">
-          ${item.note ? renderNoteContent(item.note) : ''}
+          ${item.note ? renderNoteContent(item) : ''}
           ${imagesHtml}
         </div>
       `;
@@ -248,8 +290,22 @@
         img.addEventListener('click', () => openPreview(item));
       });
       if (canEdit && item.id != null) {
-        card.querySelector('.btn-edit').addEventListener('click', () => startEdit(item));
-        card.querySelector('.btn-delete').addEventListener('click', () => confirmDelete(item));
+        card.querySelectorAll('.note-item-check').forEach((el) => {
+          el.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleItemDone(item, parseInt(el.getAttribute('data-item-idx'), 10));
+          });
+          el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              toggleItemDone(item, parseInt(el.getAttribute('data-item-idx'), 10));
+            }
+          });
+        });
+        const editBtn = card.querySelector('.btn-edit');
+        const deleteBtn = card.querySelector('.btn-delete');
+        if (editBtn) editBtn.addEventListener('click', () => startEdit(item));
+        if (deleteBtn) deleteBtn.addEventListener('click', () => confirmDelete(item));
       }
       feedbackList.appendChild(card);
     });
@@ -315,6 +371,24 @@
     deleteFeedback(item.id)
       .then(() => applyFilter())
       .catch((err) => alert('删除失败：' + (err && err.message ? err.message : '未知错误')));
+  }
+
+  function toggleItemDone(item, idx) {
+    if (remoteData !== null || item.id == null) return;
+    const itemDones = (item.itemDones || []).slice();
+    while (itemDones.length <= idx) itemDones.push(false);
+    itemDones[idx] = !itemDones[idx];
+    const updated = {
+      date: item.date,
+      member: item.member,
+      note: item.note,
+      images: item.images || [],
+      itemDones: itemDones,
+      createdAt: item.createdAt,
+    };
+    updateFeedback(item.id, updated)
+      .then(() => applyFilter())
+      .catch((err) => alert('更新完成状态失败：' + (err && err.message ? err.message : '未知错误')));
   }
 
   function cancelEdit() {
@@ -414,18 +488,24 @@
     if (!date || !member) return;
 
     const noteHtml = addNote.innerHTML.trim();
-    const record = {
-      date,
-      member,
-      note: noteHtml,
-      images: pendingImages.slice(),
-    };
+    const parsed = parseNoteIntoItems(noteHtml);
+    let itemDones = parsed.segments.filter((s) => s.isItem).map(() => false);
 
     if (editingId != null) {
       getAllFeedback().then((items) => {
         const existing = items.find((i) => i.id === editingId);
         const createdAt = (existing && existing.createdAt) || new Date().toISOString();
-        record.createdAt = createdAt;
+        const existingDones = (existing && existing.itemDones) || [];
+        itemDones = existingDones.slice(0, parsed.itemCount);
+        while (itemDones.length < parsed.itemCount) itemDones.push(false);
+        const record = {
+          date,
+          member,
+          note: noteHtml,
+          images: pendingImages.slice(),
+          itemDones,
+          createdAt,
+        };
         return updateFeedback(editingId, record);
       })
         .then(() => {
@@ -444,6 +524,13 @@
       return;
     }
 
+    const record = {
+      date,
+      member,
+      note: noteHtml,
+      images: pendingImages.slice(),
+      itemDones,
+    };
     addFeedback(record)
       .then(() => {
         addNote.innerHTML = '';
@@ -496,6 +583,7 @@
             member: item.member || '',
             note: item.note || '',
             images: item.images || [],
+            itemDones: item.itemDones || [],
           })
         );
         Promise.all(promises)

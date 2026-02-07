@@ -269,6 +269,67 @@ body {
   cursor: pointer;
 }
 
+/* 修改要点 1、2、3 前的圆圈与打勾 */
+.feedback-card-note-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.note-item-check {
+  flex-shrink: 0;
+  width: 1.4em;
+  height: 1.4em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-muted);
+  user-select: none;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.note-item-check:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.note-item-check.done {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.note-item-check.readonly {
+  cursor: default;
+  pointer-events: none;
+}
+
+.note-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-item-content.note-item-done {
+  font-style: italic;
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.note-item-intro {
+  margin-bottom: 2px;
+}
+
 .feedback-card-images {
   display: flex;
   flex-wrap: wrap;
