@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>每日项目反馈 - 组员修改要点</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>每日项目反馈</h1>
+      <p class="subtitle">记录与查看各组员当日需要修改的要点</p>
+      <div class="mode-tabs">
+        <button type="button" class="tab active" data-mode="view">查看反馈</button>
+        <button type="button" class="tab" data-mode="add">录入反馈</button>
+      </div>
+    </header>
+
+    <!-- 查看模式 -->
+    <section id="view-mode" class="mode-panel active">
+      <div class="filters">
+        <div class="filter-row">
+          <label>日期</label>
+          <input type="date" id="filter-date" />
+        </div>
+        <div class="filter-row">
+          <label>组员</label>
+          <select id="filter-member">
+            <option value="">全部组员</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-apply-filter">筛选</button>
+      </div>
+      <div class="view-actions">
+        <button type="button" class="btn btn-secondary" id="btn-export">导出数据</button>
+        <label class="btn btn-secondary" for="input-import">导入数据</label>
+        <input type="file" id="input-import" accept=".json" class="hidden" />
+      </div>
+      <div class="remote-load">
+        <input type="url" id="remote-url" placeholder="输入数据链接（只读查看）" />
+        <button type="button" class="btn btn-secondary" id="btn-load-remote">加载</button>
+        <button type="button" class="btn btn-outline hidden" id="btn-use-local">使用本地数据</button>
+      </div>
+      <p id="remote-hint" class="remote-hint hidden">当前显示的是从链接加载的只读数据</p>
+      <div id="feedback-list" class="feedback-list"></div>
+      <div id="empty-hint" class="empty-hint hidden">该条件下暂无反馈记录</div>
+    </section>
+
+    <!-- 录入模式 -->
+    <section id="add-mode" class="mode-panel">
+      <form id="add-form" class="add-form">
+        <div class="form-row">
+          <label>日期</label>
+          <input type="date" id="add-date" required />
+        </div>
+        <div class="form-row">
+          <label>组员</label>
+          <input type="text" id="add-member" list="member-list" placeholder="输入或选择组员姓名" required />
+          <datalist id="member-list"></datalist>
+        </div>
+        <div class="form-row">
+          <label>修改要点（可选）</label>
+          <div id="add-note" class="note-editor" contenteditable="true" data-placeholder="写问题与修改要点，可直接粘贴图片（Ctrl+V），图片会跟在文字后面"></div>
+          <p class="field-hint">支持在文字中直接粘贴截图，每条问题后面跟图即可</p>
+        </div>
+        <div class="form-row optional-images">
+          <label>额外反馈图片（可选）</label>
+          <input type="file" id="add-images" accept="image/*" multiple />
+          <div id="image-preview" class="image-preview"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">保存本条反馈</button>
+      </form>
+    </section>
+  </div>
+
+  <!-- 反馈卡片详情/图片预览 -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <button type="button" class="modal-close" aria-label="关闭">&times;</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
