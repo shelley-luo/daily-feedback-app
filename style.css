@@ -336,11 +336,32 @@ body {
 }
 
 .note-item-content p {
-  margin: 0 0 0.35em;
+  margin: 0 0 0.4em;
 }
 
 .note-item-content p:last-child {
   margin-bottom: 0;
+}
+
+/* 编辑时多打回车产生的空段落：统一成小间距，避免展示页排版错乱 */
+.note-item-content p:empty,
+.feedback-card-note p:empty {
+  margin: 0 0 0.35em;
+  min-height: 0;
+  height: 0.5em;
+  display: block;
+}
+
+.note-item-content div:empty:not([class]) {
+  margin: 0 0 0.35em;
+  min-height: 0;
+  height: 0.5em;
+  display: block;
+}
+
+.note-sanitized-value {
+  color: var(--text-muted);
+  font-size: 0.9em;
 }
 
 /* 展示页：图片在文字下面、靠左，不压缩比例 */

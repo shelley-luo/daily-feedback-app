@@ -213,6 +213,30 @@
     return typeof note === 'string' && note.includes('<');
   }
 
+  // 展示前去掉笔记里的表单控件（input/select/button），避免粘贴或误插入的日期框等破坏排版
+  function sanitizeNoteHtml(html) {
+    if (!html || typeof html !== 'string') return html;
+    try {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      wrap.querySelectorAll('input, select, button').forEach((el) => {
+        const span = document.createElement('span');
+        if (el.tagName === 'INPUT' && (el.type === 'date' || el.type === 'text' || el.type === 'datetime-local')) {
+          span.textContent = el.value || '';
+        } else if (el.tagName === 'SELECT') {
+          span.textContent = el.options[el.selectedIndex] ? el.options[el.selectedIndex].text : '';
+        } else {
+          span.textContent = el.value != null ? el.value : el.textContent || '';
+        }
+        span.className = 'note-sanitized-value';
+        el.parentNode.replaceChild(span, el);
+      });
+      return wrap.innerHTML;
+    } catch (e) {
+      return html;
+    }
+  }
+
   // 判断是否为「仅单个 HTML 标签」（如 <p>、<div>、<br>），这类片段会导致后续内容被错误缩进
   function isOnlySingleTag(s) {
     const t = (s || '').trim();
@@ -248,7 +272,7 @@
     const canToggle = parsed.itemCount > 0;
 
     if (parsed.itemCount === 0) {
-      if (noteHtml) return '<div class="feedback-card-note">' + note + '</div>';
+      if (noteHtml) return '<div class="feedback-card-note">' + sanitizeNoteHtml(note) + '</div>';
       return '<div class="feedback-card-note note-is-text">' + escapeHtml(note) + '</div>';
     }
 
@@ -262,13 +286,13 @@
         const checkClass = done ? 'note-item-check done' : 'note-item-check';
         const contentClass = done ? 'note-item-content note-item-done' : 'note-item-content';
         const label = done ? '取消完成' : '标记完成';
-        const safeContent = stripTrailingOpenTag(seg.contentRaw);
+        const safeContent = sanitizeNoteHtml(stripTrailingOpenTag(seg.contentRaw));
         html += '<div class="note-item-row">';
         html += `<span class="${checkClass}" role="button" tabindex="0" data-item-idx="${idx}" data-done="${done}" title="${label}" aria-label="${label}">${done ? '✓' : '○'}</span>`;
         html += `<div class="${contentClass}">${safeContent}</div>`;
         html += '</div>';
       } else if (!isOnlySingleTag(seg.contentRaw)) {
-        html += '<div class="note-item-intro">' + seg.contentRaw + '</div>';
+        html += '<div class="note-item-intro">' + sanitizeNoteHtml(seg.contentRaw) + '</div>';
       }
     });
     html += '</div>';
