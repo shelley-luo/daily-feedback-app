@@ -96,6 +96,17 @@
     });
   }
 
+  function clearLocalData() {
+    return new Promise((resolve) => {
+      const req = indexedDB.deleteDatabase(DB_NAME);
+      req.onsuccess = () => {
+        db = null;
+        resolve();
+      };
+      req.onerror = () => resolve();
+    });
+  }
+
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -138,6 +149,7 @@
   const modalBody = document.getElementById('modal-body');
   const btnExport = document.getElementById('btn-export');
   const inputImport = document.getElementById('input-import');
+  const btnClearLocal = document.getElementById('btn-clear-local');
   const remoteUrl = document.getElementById('remote-url');
   const btnLoadRemote = document.getElementById('btn-load-remote');
   const btnUseLocal = document.getElementById('btn-use-local');
@@ -747,6 +759,19 @@
         alert('保存失败：' + (err && err.message ? err.message : '未知错误'));
       });
   });
+
+  // 清除本地数据（解决错误/重复数据）
+  if (btnClearLocal) {
+    btnClearLocal.addEventListener('click', () => {
+      if (!confirm('确定要清除本页保存的所有反馈吗？清除后无法恢复，请先导出备份。')) return;
+      clearLocalData().then(() => {
+        remoteData = null;
+        remoteDataUrl = '';
+        applyFilter();
+        alert('已清除本地数据');
+      });
+    });
+  }
 
   // 导出：当前筛选结果或全部
   btnExport.addEventListener('click', () => {
