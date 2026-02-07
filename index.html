@@ -61,6 +61,27 @@
         </div>
         <div class="form-row">
           <label>修改要点（可选）</label>
+          <div class="note-toolbar">
+            <button type="button" class="toolbar-btn" id="note-bold" title="加粗">B</button>
+            <button type="button" class="toolbar-btn" id="note-underline" title="下划线">U</button>
+            <select class="toolbar-select" id="note-fontsize" title="字号">
+              <option value="">字号</option>
+              <option value="12">12px</option>
+              <option value="14">14px</option>
+              <option value="16">16px</option>
+              <option value="18">18px</option>
+              <option value="20">20px</option>
+            </select>
+            <div class="toolbar-color-wrap">
+              <span class="toolbar-color-label">颜色</span>
+              <button type="button" class="toolbar-color-btn" data-color="#ffffff" style="background:#fff;color:#333;border-color:#666" title="白">白</button>
+              <button type="button" class="toolbar-color-btn" data-color="#000000" style="background:#000" title="黑">黑</button>
+              <button type="button" class="toolbar-color-btn" data-color="#58a6ff" style="background:#58a6ff" title="蓝">蓝</button>
+              <button type="button" class="toolbar-color-btn" data-color="#f85149" style="background:#f85149" title="红">红</button>
+              <button type="button" class="toolbar-color-btn" data-color="#3fb950" style="background:#3fb950" title="绿">绿</button>
+              <button type="button" class="toolbar-color-btn" data-color="#d29922" style="background:#d29922" title="黄">黄</button>
+            </div>
+          </div>
           <div id="add-note" class="note-editor" contenteditable="true" data-placeholder="写问题与修改要点，可直接粘贴图片（Ctrl+V），图片会跟在文字后面"></div>
           <p class="field-hint">支持在文字中直接粘贴截图，每条问题后面跟图即可</p>
         </div>

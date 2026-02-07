@@ -186,7 +186,7 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .feedback-card-header {
@@ -197,6 +197,8 @@ body {
   gap: 8px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  overflow: hidden;
 }
 
 .feedback-card-member {
@@ -269,17 +271,25 @@ body {
   cursor: pointer;
 }
 
-/* 修改要点 1、2、3 前的圆圈与打勾 */
+/* 修改要点 1、2、3、4… 前的圆圈与打勾；每条独立成块，互不影响 */
 .feedback-card-note-items {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
 .note-item-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  break-inside: avoid;
+  clear: both;
+  min-height: 1.5em;
+  overflow: visible;
+}
+
+.note-item-row + .note-item-row {
+  margin-top: 4px;
 }
 
 .note-item-check {
@@ -318,6 +328,40 @@ body {
 .note-item-content {
   flex: 1;
   min-width: 0;
+  display: block;
+  text-align: left;
+  overflow: visible;
+  position: relative;
+  z-index: 0;
+}
+
+.note-item-content p {
+  margin: 0 0 0.35em;
+}
+
+.note-item-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* 展示页：图片在文字下面、靠左，不压缩比例 */
+.note-item-content img {
+  display: block;
+  float: none;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  margin: 0.35em 0 0;
+  clear: both;
+  vertical-align: top;
+}
+
+/* 嵌入内容（如 iframe）不撑破布局、不压缩其它条 */
+.note-item-content iframe,
+.note-item-content object {
+  max-width: 100%;
+  display: block;
+  margin: 0.35em 0 0;
+  clear: both;
 }
 
 .note-item-content.note-item-done {
@@ -393,6 +437,76 @@ body {
 .form-row textarea {
   resize: vertical;
   min-height: 80px;
+}
+
+/* 修改要点 - 工具栏 */
+.note-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.toolbar-btn {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.toolbar-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.toolbar-select {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.toolbar-color-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.toolbar-color-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+
+.toolbar-color-btn {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: #fff;
+  text-shadow: 0 0 1px rgba(0,0,0,0.8);
+}
+
+.toolbar-color-btn:hover {
+  filter: brightness(1.15);
 }
 
 /* 修改要点 - 富文本，可粘贴图片 */

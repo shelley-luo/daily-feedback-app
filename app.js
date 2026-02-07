@@ -213,12 +213,26 @@
     return typeof note === 'string' && note.includes('<');
   }
 
-  // 将修改要点按「1. 2. 3.」拆成多条，用于前面显示圆圈和打勾
+  // 判断是否为「仅单个 HTML 标签」（如 <p>、<div>、<br>），这类片段会导致后续内容被错误缩进
+  function isOnlySingleTag(s) {
+    const t = (s || '').trim();
+    return t.length > 0 && /^<(\w+)(\s[^>]*)?\/?>$/.test(t) || t === '<br>';
+  }
+
+  // 去掉末尾未闭合的开标签（如 </p><p>、</div><div>），避免下一行被包进同一块导致缩进
+  function stripTrailingOpenTag(html) {
+    if (!html || typeof html !== 'string') return html;
+    return html.replace(/(<\s*\/\s*\w+\s*>)\s*(<\s*\w+(\s[^>]*)?\s*>)\s*$/, '$1').replace(/(<\s*\w+(\s[^>]*)?\s*>)\s*$/, '');
+  }
+
+  // 将修改要点按「1. 2. 3.」拆成多条（数字 + 点 + 至少一个空格或 &nbsp;）
+  // 同时识别普通空格和 &nbsp;，避免加字号等格式后圆圈消失
   function parseNoteIntoItems(html) {
     if (!html || typeof html !== 'string') return { segments: [], itemCount: 0 };
-    const segments = html.split(/(?=\d+[\.．]\s+)/);
+    const itemStart = /(?=\d+[\.．](?:\s|&nbsp;)+)/;
+    const segments = html.split(itemStart);
     const result = segments.map((content) => {
-      const isItem = /\d+[\.．]\s+/.test(content);
+      const isItem = /\d+[\.．](?:\s|&nbsp;)+/.test(content);
       return { content: content.trim(), contentRaw: content, isItem };
     }).filter((s) => s.content.length > 0);
     const itemCount = result.filter((s) => s.isItem).length;
@@ -248,11 +262,12 @@
         const checkClass = done ? 'note-item-check done' : 'note-item-check';
         const contentClass = done ? 'note-item-content note-item-done' : 'note-item-content';
         const label = done ? '取消完成' : '标记完成';
+        const safeContent = stripTrailingOpenTag(seg.contentRaw);
         html += '<div class="note-item-row">';
         html += `<span class="${checkClass}" role="button" tabindex="0" data-item-idx="${idx}" data-done="${done}" title="${label}" aria-label="${label}">${done ? '✓' : '○'}</span>`;
-        html += `<span class="${contentClass}">${seg.contentRaw}</span>`;
+        html += `<div class="${contentClass}">${safeContent}</div>`;
         html += '</div>';
-      } else {
+      } else if (!isOnlySingleTag(seg.contentRaw)) {
         html += '<div class="note-item-intro">' + seg.contentRaw + '</div>';
       }
     });
@@ -446,6 +461,108 @@
     tab.addEventListener('click', () => {
       if (tab.getAttribute('data-mode') === 'view') cancelEdit();
     });
+  });
+
+  // 修改要点工具栏：加粗、下划线、字号、颜色
+  let savedNoteRange = null;
+
+  addNote.addEventListener('blur', () => {
+    const sel = window.getSelection();
+    if (sel.rangeCount && addNote.contains(sel.anchorNode)) {
+      savedNoteRange = sel.getRangeAt(0).cloneRange();
+    }
+  });
+
+  function restoreNoteSelection() {
+    addNote.focus();
+    if (savedNoteRange) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedNoteRange);
+    }
+  }
+
+  function applyNoteCommand(cmd, value) {
+    restoreNoteSelection();
+    document.execCommand(cmd, false, value || null);
+  }
+
+  document.getElementById('note-bold').addEventListener('click', () => applyNoteCommand('bold'));
+
+  document.getElementById('note-underline').addEventListener('click', () => applyNoteCommand('underline'));
+
+  function isInlineNode(node) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
+    const inlineTags = /^(A|B|STRONG|I|EM|U|S|SPAN|FONT|SUB|SUP|CITE|CODE|LABEL)$/i;
+    return inlineTags.test(node.tagName);
+  }
+
+  function expandRangeToFormatting(range, root) {
+    if (!root || !range) return;
+    let start = range.startContainer;
+    let end = range.endContainer;
+    while (start && start !== root && isInlineNode(start.parentNode)) {
+      const par = start.parentNode;
+      if (par.childNodes.length === 1 || (par.firstChild === start && range.startOffset === 0)) {
+        range.setStart(par, 0);
+        start = par;
+      } else break;
+    }
+    while (end && end !== root && isInlineNode(end.parentNode)) {
+      const par = end.parentNode;
+      const last = par.lastChild;
+      if (par.childNodes.length === 1 || (last === end && range.endOffset === (end.nodeType === Node.TEXT_NODE ? end.length : end.childNodes.length))) {
+        range.setEnd(par, par.childNodes.length);
+        end = par;
+      } else break;
+    }
+  }
+
+  document.getElementById('note-fontsize').addEventListener('change', function () {
+    const px = this.value;
+    if (!px) return;
+    restoreNoteSelection();
+    const sel = window.getSelection();
+    if (!sel.rangeCount) {
+      this.value = '';
+      return;
+    }
+    const range = sel.getRangeAt(0).cloneRange();
+    const text = sel.toString();
+    if (!text) {
+      this.value = '';
+      return;
+    }
+    try {
+      expandRangeToFormatting(range, addNote);
+      const fragment = range.cloneContents();
+      const wrap = document.createElement('div');
+      wrap.appendChild(fragment);
+      let innerHtml = wrap.innerHTML;
+      innerHtml = innerHtml.replace(/\s*font-size\s*:\s*\d+px\s*;?/gi, ' ');
+      innerHtml = innerHtml.replace(/\s*style="\s*"/gi, '');
+      document.execCommand('insertHTML', false, '<span style="font-size:' + px + 'px">' + innerHtml + '</span>');
+    } catch (e) {
+      document.execCommand('insertHTML', false, '<span style="font-size:' + px + 'px">' + text + '</span>');
+    }
+    this.value = '';
+  });
+
+  document.querySelector('.note-toolbar').addEventListener('click', (e) => {
+    const btn = e.target.closest('.toolbar-color-btn');
+    if (btn) {
+      applyNoteCommand('foreColor', btn.getAttribute('data-color'));
+    }
+  });
+
+  document.querySelector('.note-toolbar').addEventListener('mousedown', (e) => {
+    if (e.target.closest('.toolbar-btn') || e.target.closest('.toolbar-select') || e.target.closest('.toolbar-color-btn')) {
+      const sel = window.getSelection();
+      if (sel.rangeCount && addNote.contains(sel.anchorNode)) {
+        savedNoteRange = sel.getRangeAt(0).cloneRange();
+      }
+    }
+    if (e.target.closest('.toolbar-btn') || e.target.closest('.toolbar-color-btn')) e.preventDefault();
   });
 
   // 修改要点编辑区：粘贴图片、拖放图片
