@@ -164,6 +164,16 @@ body {
   margin: -8px 0 12px;
 }
 
+.readonly-hint {
+  font-size: 0.9rem;
+  color: var(--accent);
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
 .btn-outline {
   background: transparent;
   color: var(--text-muted);

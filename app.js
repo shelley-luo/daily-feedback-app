@@ -150,6 +150,21 @@
 
   const REMOTE_DONES_KEY = 'daily-feedback-remote-dones';
 
+  const isReadonlyUrl = (function () {
+    const params = new URLSearchParams(location.search);
+    return params.get('view') === '1' || params.get('readonly') === '1';
+  })();
+
+  if (isReadonlyUrl) {
+    const tabAdd = document.getElementById('tab-add');
+    const modeTabs = document.getElementById('mode-tabs');
+    const viewActions = document.getElementById('view-actions');
+    const readonlyHint = document.getElementById('readonly-hint');
+    if (tabAdd) tabAdd.style.display = 'none';
+    if (viewActions) viewActions.style.display = 'none';
+    if (readonlyHint) readonlyHint.classList.remove('hidden');
+  }
+
   function getRemoteDonesStore() {
     try {
       const raw = localStorage.getItem(REMOTE_DONES_KEY);
@@ -397,6 +412,10 @@
       return;
     }
     setRemoteMode(false);
+    if (isReadonlyUrl) {
+      renderFilteredItems([]);
+      return;
+    }
     getAllFeedback().then((items) => {
       renderFilteredItems(items);
     });

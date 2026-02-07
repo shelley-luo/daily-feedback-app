@@ -11,9 +11,9 @@
     <header class="header">
       <h1>每日项目反馈</h1>
       <p class="subtitle">记录与查看各组员当日需要修改的要点</p>
-      <div class="mode-tabs">
+      <div class="mode-tabs" id="mode-tabs">
         <button type="button" class="tab active" data-mode="view">查看反馈</button>
-        <button type="button" class="tab" data-mode="add">录入反馈</button>
+        <button type="button" class="tab" data-mode="add" id="tab-add">录入反馈</button>
       </div>
     </header>
 
@@ -32,11 +32,12 @@
         </div>
         <button type="button" class="btn btn-primary" id="btn-apply-filter">筛选</button>
       </div>
-      <div class="view-actions">
+      <div class="view-actions" id="view-actions">
         <button type="button" class="btn btn-secondary" id="btn-export">导出数据</button>
         <label class="btn btn-secondary" for="input-import">导入数据</label>
         <input type="file" id="input-import" accept=".json" class="hidden" />
       </div>
+      <p id="readonly-hint" class="readonly-hint hidden">此页面为只读，请输入下方数据链接加载反馈内容</p>
       <div class="remote-load">
         <input type="url" id="remote-url" placeholder="输入数据链接，加载后可勾选完成项" />
         <button type="button" class="btn btn-secondary" id="btn-load-remote">加载</button>
